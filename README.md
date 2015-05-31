@@ -1,1 +1,1 @@
-# MyAndroidLibs
+# core.droid
