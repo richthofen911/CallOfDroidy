@@ -1,4 +1,4 @@
-package ap1.com.demo;
+package project.richthofen911.coredroid;
 
 import android.app.Activity;
 import android.os.RemoteException;
@@ -21,9 +21,9 @@ import java.util.Collection;
 
 public class ActivityBeaconDetectionByRECO extends Activity implements RECOServiceConnectListener, RECORangingListener{
 
-    String TOBEFOUND_UUID = "24DDF4118CF1440C87CDE368DAF9C93E";
-    int TOBEFOUND_MAJOR = 0;
-    int TOBEFOUND_MINOR = 0;
+    private String TOBEFOUND_UUID = "";
+    private int TOBEFOUND_MAJOR = 0;
+    private int TOBEFOUND_MINOR = 0;
 
     private final boolean DISCONTINUOUS_SCAN = false;
 
@@ -33,44 +33,23 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
     protected ArrayList<RECOBeaconRegion> definedRegions;
 
     public ActivityBeaconDetectionByRECO(String uuid){
-        //this.TOBEFOUND_UUID = uuid;
         definedRegions = generateBeaconRegion(uuid);
     }
 
     public ActivityBeaconDetectionByRECO(String uuid, int major){
-        this.TOBEFOUND_UUID = uuid;
-        this.TOBEFOUND_MAJOR = major;
         definedRegions = generateBeaconRegion(uuid, major);
     }
 
     public ActivityBeaconDetectionByRECO(String uuid, int major, int minor){
-        this.TOBEFOUND_UUID = uuid;
-        this.TOBEFOUND_MAJOR = major;
-        this.TOBEFOUND_MINOR = minor;
         definedRegions = generateBeaconRegion(uuid, major, minor);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+
         mRecoManager.setRangingListener(this);
         mRecoManager.bind(this);
-
-        findViewById(R.id.btn_startRanging).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                start(definedRegions);
-            }
-        });
-
-        findViewById(R.id.btn_stopRanging).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                stop(definedRegions);
-            }
-        });
-
     }
 
     protected void start(ArrayList<RECOBeaconRegion> regions) {
