@@ -21,27 +21,29 @@ import java.util.Collection;
 
 public class ActivityBeaconDetectionByRECO extends Activity implements RECOServiceConnectListener, RECORangingListener{
 
-    private String TOBEFOUND_UUID = "";
-    private int TOBEFOUND_MAJOR = 0;
-    private int TOBEFOUND_MINOR = 0;
-
     private final boolean DISCONTINUOUS_SCAN = false;
 
-    private boolean haveFoundBeacon = false;
+    private boolean entered = false;
+    private int exitCount = 0;
+    private boolean exited = false;
+    private int rssiBorder = 0;
 
     protected RECOBeaconManager mRecoManager = RECOBeaconManager.getInstance(this, false, false);
     protected ArrayList<RECOBeaconRegion> definedRegions;
 
-    protected void assignRegionArgs(String uuid){
+    protected void assignRegionArgs(String uuid, int borderValue){
         definedRegions = generateBeaconRegion(uuid);
+        rssiBorder = borderValue;
     }
 
-    protected void assignRegionArgs(String uuid, int major){
+    protected void assignRegionArgs(String uuid, int major, int borderValue){
         definedRegions = generateBeaconRegion(uuid, major);
+        rssiBorder = borderValue;
     }
 
-    protected void assignRegionArgs(String uuid, int major, int minor){
+    protected void assignRegionArgs(String uuid, int major, int minor, int borderValue){
         definedRegions = generateBeaconRegion(uuid, major, minor);
+        rssiBorder = borderValue;
     }
 
     @Override
@@ -56,7 +58,7 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
         for(RECOBeaconRegion region : regions) {
             try {
                 mRecoManager.startRangingBeaconsInRegion(region);
-                Log.e("setup a region: ", region.getProximityUuid());
+                Log.e("start detecting", region.describeContents() + "");
             } catch (RemoteException e) {
                 Log.i("RECORangingActivity", "Remote Exception");
                 e.printStackTrace();
@@ -68,11 +70,11 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
     }
 
     protected void stop(ArrayList<RECOBeaconRegion> regions) {
+        Log.e("stop detecting", "...");
         for(RECOBeaconRegion region : regions) {
             try {
                 mRecoManager.stopRangingBeaconsInRegion(region);
                 entered = false;
-                Log.e("setup a region: ", region.getProximityUuid());
             } catch (RemoteException e) {
                 Log.i("RECORangingActivity", "Remote Exception");
                 e.printStackTrace();
@@ -118,30 +120,42 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
         Log.e("RECO service error:", recoErrorCode.toString());
     }
 
-    @Override
-    public void didRangeBeaconsInRegion(Collection<RECOBeacon> recoBeacons, RECOBeaconRegion recoBeaconRegion) {
-        if(!recoBeacons.isEmpty()){
-            synchronized (recoBeacons){
-                for(RECOBeacon recoBeacon: recoBeacons){
-                    if(recoBeacon.getProximity() == RECOProximity.RECOProximityImmediate || recoBeacon.getProximity() == RECOProximity.RECOProximityNear){
-                        if(!haveFoundBeacon){
-                            Toast.makeText(getApplicationContext(), "found the beacon", Toast.LENGTH_SHORT).show();
-                            haveFoundBeacon = true;
-                        }else{
-                            //haveFoundBeacon flag is true, haven't exit the region
-                            Log.e("have found already", "");
-                        }
-                    }else{
-                        //range is farther than RECOProximityNear
-                        Log.e("out of range", "");
-                        haveFoundBeacon = false;
-                    }
-                }
+    protected void actionOnEnter(RECOBeacon recoBeacon){}
+
+    protected void actionOnExit(RECOBeacon recoBeacon){}
+
+    private void inOut(int theRssi, RECOBeacon recoBeacon){
+        if(theRssi > rssiBorder){
+            if(!entered){
+                exitCount = 0;
+                entered = true;
+                exited = false;
+                actionOnEnter(recoBeacon);
+            }else{
+                Log.e("entered already", ")");
             }
         }else{
-            //the beacon isn't detected at all
-            Log.e("out of range", "");
-            haveFoundBeacon = false;
+            if(exitCount < 3){
+                exitCount++;
+            }else {
+                if(!exited){
+                    entered = false;
+                    exited = true;
+                    actionOnExit(recoBeacon);
+                }else {
+                    Log.e("exited already", ")");
+                }
+            }
+        }
+    }
+
+    @Override
+    public void didRangeBeaconsInRegion(Collection<RECOBeacon> recoBeacons, RECOBeaconRegion recoBeaconRegion) {
+        synchronized (recoBeacons){
+            for(RECOBeacon recoBeacon: recoBeacons){
+                Log.e("beacon detected, rssi", String.valueOf(recoBeacon.getRssi()));
+                inOut(recoBeacon.getRssi(), recoBeacon);
+            }
         }
     }
 

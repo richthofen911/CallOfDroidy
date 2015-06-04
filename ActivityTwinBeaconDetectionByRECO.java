@@ -61,9 +61,8 @@ public class ActivityTwinBeaconDetectionByRECO extends Activity implements RECOS
     protected void start(ArrayList<RECOBeaconRegion> regions) {
         for(RECOBeaconRegion region : regions) {
             try {
-                Log.e("setup a region", region.getProximityUuid());
-                Log.e("start detecting", "...");
                 mRecoManager.startRangingBeaconsInRegion(region);
+                Log.e("start detecting", region.describeContents() + "");
             } catch (RemoteException e) {
                 Log.i("RECORangingActivity", "Remote Exception");
                 e.printStackTrace();
@@ -177,28 +176,28 @@ public class ActivityTwinBeaconDetectionByRECO extends Activity implements RECOS
         actualMinor2 = 0;
     }
 
-    protected void actionOnEnter(){}
+    protected void actionOnEnter(RECOBeacon recoBeacon){}
 
-    protected void actionOnExit(){}
+    protected void actionOnExit(RECOBeacon recoBeacon){}
 
-    private void inOut(int theRssi){
+    private void inOut(int theRssi, RECOBeacon recoBeacon){
         if(theRssi > rssiBorder){
             if(!entered){
-                actionOnEnter();
                 exitCount = 0;
                 entered = true;
                 exited = false;
+                actionOnEnter(recoBeacon);
             }else{
-                Log.e("checkin already", ")");
+                Log.e("entered already", ")");
             }
         }else{
             if(exitCount < 2){
                 exitCount++;
             }else {
                 if(!exited){
-                    actionOnExit();
                     entered = false;
                     exited = true;
+                    actionOnExit(recoBeacon);
                 }else {
                     Log.e("exited already", ")");
                 }
@@ -224,7 +223,7 @@ public class ActivityTwinBeaconDetectionByRECO extends Activity implements RECOS
                         rssi = (rssiSum[0] + rssiSum[1] + rssiSum[2] + rssiSum[3]) / 4;
                         Log.e("rssi calibrated by avg", String.valueOf(rssi));
                     }
-                    inOut(rssi);
+                    inOut(rssi, recoBeacon);
                     resetArgs();
                 }else{
                     Log.e("not able to range yet", "(");
