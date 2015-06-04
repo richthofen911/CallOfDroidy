@@ -1,4 +1,4 @@
-package project.richthofen911.coredroid;
+package project.richthofen911.callofdroidy;
 
 import android.app.Activity;
 import android.os.RemoteException;
@@ -32,15 +32,15 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
     protected RECOBeaconManager mRecoManager = RECOBeaconManager.getInstance(this, false, false);
     protected ArrayList<RECOBeaconRegion> definedRegions;
 
-    public ActivityBeaconDetectionByRECO(String uuid){
+    protected void assignRegionArgs(String uuid){
         definedRegions = generateBeaconRegion(uuid);
     }
 
-    public ActivityBeaconDetectionByRECO(String uuid, int major){
+    protected void assignRegionArgs(String uuid, int major){
         definedRegions = generateBeaconRegion(uuid, major);
     }
 
-    public ActivityBeaconDetectionByRECO(String uuid, int major, int minor){
+    protected void assignRegionArgs(String uuid, int major, int minor){
         definedRegions = generateBeaconRegion(uuid, major, minor);
     }
 
@@ -71,7 +71,7 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
         for(RECOBeaconRegion region : regions) {
             try {
                 mRecoManager.stopRangingBeaconsInRegion(region);
-                haveFoundBeacon = false;
+                entered = false;
                 Log.e("setup a region: ", region.getProximityUuid());
             } catch (RemoteException e) {
                 Log.i("RECORangingActivity", "Remote Exception");
@@ -148,5 +148,15 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
     @Override
     public void rangingBeaconsDidFailForRegion(RECOBeaconRegion recoBeaconRegion, RECOErrorCode recoErrorCode) {
         Log.e("RECO ranging error:", recoErrorCode.toString());
+    }
+
+    @Override
+    protected void onDestroy(){
+        super.onDestroy();
+        try{
+            mRecoManager.unbind();
+        }catch (RemoteException e){
+            Log.e("on destroy error", e.toString());
+        }
     }
 }
