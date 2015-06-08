@@ -1,4 +1,4 @@
-package project.richthofen911.callofdroidy;
+package project.richthofen911.callofdroidy.http;
 
 import android.util.Log;
 

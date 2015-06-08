@@ -1,4 +1,4 @@
-package project.richthofen911.callofdroidy;
+package project.richthofen911.callofdroidy.Parser;
 
 import android.util.Log;
 
@@ -13,7 +13,7 @@ import java.util.Objects;
 /**
  * Created by admin on 05/06/15.
  */
-public class Parsers {
+public class ParseJSON {
 
     public static JSONObject stringToJSONObject(String input){
         input = input.replace("\\", "");

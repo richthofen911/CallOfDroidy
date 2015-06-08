@@ -1,49 +1,57 @@
-package project.richthofen911.callofdroidy;
+package project.richthofen911.callofdroidy.beacon;
 
 import android.app.Activity;
 import android.os.RemoteException;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.Toast;
 
 import com.perples.recosdk.RECOBeacon;
 import com.perples.recosdk.RECOBeaconManager;
 import com.perples.recosdk.RECOBeaconRegion;
 import com.perples.recosdk.RECOErrorCode;
-import com.perples.recosdk.RECOProximity;
 import com.perples.recosdk.RECORangingListener;
 import com.perples.recosdk.RECOServiceConnectListener;
 
 import java.util.ArrayList;
 import java.util.Collection;
 
-
-public class ActivityBeaconDetectionByRECO extends Activity implements RECOServiceConnectListener, RECORangingListener{
+public class ActivityTwinBeaconDetectionByRECO extends Activity implements RECOServiceConnectListener, RECORangingListener{
 
     private final boolean DISCONTINUOUS_SCAN = false;
 
     private boolean entered = false;
     private int exitCount = 0;
+    private int failedCount = 0;
     private boolean exited = false;
+    private int rssi1 = 0;
+    private int rssi2 = 0;
+    private int rssi = 0;
+    private int[] rssiSum = new int[5];
+    private int wantedMinor = 0;
+    private int actualMinor1 = 0;
+    private int actualMinor2 = 0;
     private int rssiBorder = 0;
+    protected boolean startImmediately = false;
 
     protected RECOBeaconManager mRecoManager = RECOBeaconManager.getInstance(this, false, false);
     protected ArrayList<RECOBeaconRegion> definedRegions;
 
-    protected void assignRegionArgs(String uuid, int borderValue){
+    protected void assignRegionArgs(String uuid, int borderValue, boolean start){
         definedRegions = generateBeaconRegion(uuid);
         rssiBorder = borderValue;
+        startImmediately = start;
     }
 
-    protected void assignRegionArgs(String uuid, int major, int borderValue){
+    protected void assignRegionArgs(String uuid, int major, int borderValue, boolean start){
         definedRegions = generateBeaconRegion(uuid, major);
         rssiBorder = borderValue;
+        startImmediately = start;
     }
 
-    protected void assignRegionArgs(String uuid, int major, int minor, int borderValue){
+    protected void assignRegionArgs(String uuid, int major, int minor, int borderValue, boolean start){
         definedRegions = generateBeaconRegion(uuid, major, minor);
         rssiBorder = borderValue;
+        startImmediately = start;
     }
 
     @Override
@@ -113,11 +121,65 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
     public void onServiceConnect() {
         Log.e("RangingActivity", "onServiceConnect()");
         mRecoManager.setDiscontinuousScan(DISCONTINUOUS_SCAN);
+        if(startImmediately)
+            start(definedRegions);
     }
 
     @Override
     public void onServiceFail(RECOErrorCode recoErrorCode) {
         Log.e("RECO service error:", recoErrorCode.toString());
+    }
+
+    private void assignWantedMinor(int minor, int thisRssi){
+        if(minor % 3 == 1){
+            actualMinor1 = minor;
+            Log.e("detectedMinor", String.valueOf(actualMinor1));
+            Log.e("beacon1", "is ready");
+            rssi1 = thisRssi;
+            Log.e("detectedRSSI", String.valueOf(rssi1));
+            wantedMinor = minor + 1;
+            Log.e("wantedMinor", String.valueOf(wantedMinor));
+        }else{
+            actualMinor2 = minor;
+            Log.e("detectedMinor", String.valueOf(actualMinor2));
+            Log.e("beacon2", "is ready");
+            rssi2 = thisRssi;
+            Log.e("detectedRSSI", String.valueOf(rssi2));
+            wantedMinor = minor - 1;
+            Log.e("wantedMinor", String.valueOf(wantedMinor));
+        }
+    }
+
+    private int isWantedMinorDetected(){
+        if(actualMinor1 == 0 || actualMinor2 == 0){
+            Log.e("twins not ready", ".");
+            failedCount++;
+            if(failedCount < 5){
+                if(rssi1 == 0){
+                    rssiSum[failedCount - 1] = rssi2;
+                }else {
+                    rssiSum[failedCount - 1] = rssi1;
+                }
+                return 0;
+            }else {
+                failedCount = 0;
+                return 2;
+            }
+        }else if((actualMinor2 - actualMinor1) > 1){
+            Log.e("not twins", "");
+            //failedCount++;
+            return 0;
+        }else
+            return 1;
+    }
+
+    private void resetArgs() {
+        rssi1 = 0;
+        rssi2 = 0;
+        rssi = 0;
+        wantedMinor = 0;
+        actualMinor1 = 0;
+        actualMinor2 = 0;
     }
 
     protected void actionOnEnter(RECOBeacon recoBeacon){}
@@ -135,7 +197,7 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
                 Log.e("entered already", ")");
             }
         }else{
-            if(exitCount < 3){
+            if(exitCount < 2){
                 exitCount++;
             }else {
                 if(!exited){
@@ -153,8 +215,25 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
     public void didRangeBeaconsInRegion(Collection<RECOBeacon> recoBeacons, RECOBeaconRegion recoBeaconRegion) {
         synchronized (recoBeacons){
             for(RECOBeacon recoBeacon: recoBeacons){
-                Log.e("beacon detected, rssi", String.valueOf(recoBeacon.getRssi()));
-                inOut(recoBeacon.getRssi(), recoBeacon);
+                int tmpMinor = recoBeacon.getMinor();
+                int tmpRssi = recoBeacon.getRssi();
+                assignWantedMinor(tmpMinor, tmpRssi);
+                int result = isWantedMinorDetected();
+                if(result > 0){
+                    Log.e("beacon detected, rssi1", String.valueOf(rssi1));
+                    Log.e("beacon detected, rssi2", String.valueOf(rssi2));
+                    if(result == 1){
+                        rssi = (rssi1 + rssi2) / 2;
+                        Log.e("rssi calibrated", String.valueOf(rssi));
+                    }else {
+                        rssi = (rssiSum[0] + rssiSum[1] + rssiSum[2] + rssiSum[3]) / 4;
+                        Log.e("rssi calibrated by avg", String.valueOf(rssi));
+                    }
+                    inOut(rssi, recoBeacon);
+                    resetArgs();
+                }else{
+                    Log.e("not able to range yet", "(");
+                }
             }
         }
     }
