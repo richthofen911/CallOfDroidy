@@ -13,6 +13,7 @@ import org.apache.http.impl.client.BasicResponseHandler;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
+import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -55,7 +56,7 @@ public abstract class HTTPTask extends AsyncTask<HttpUriRequest, Void, Object> {
         try {
             HttpResponse serverResponse = mClient.execute(params[0]);
             responseStatusCode = serverResponse.getStatusLine().getStatusCode();
-            String response = "";
+            String response = EntityUtils.toString(serverResponse.getEntity(), "UTF-8");
             return response;
         }
         catch (Exception e) {
@@ -64,14 +65,15 @@ public abstract class HTTPTask extends AsyncTask<HttpUriRequest, Void, Object> {
         }
     }
 
-    abstract public void actionOnPostExecute();
+    abstract public void actionOnPostExecute(String str);
 
     @Override
     protected void onPostExecute(Object result) {
         if (getResponseStatusCode() == 200){
-            actionOnPostExecute();
+            actionOnPostExecute(result.toString());
         }else {
             Log.e("HTTP request error", serverResponse.toString());
+            Log.e("Error from resp", result.toString());
         }
     }
 }
