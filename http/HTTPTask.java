@@ -24,19 +24,14 @@ import java.lang.ref.WeakReference;
         params.setSoTimeout(httpParameters, 30000);
 */
 
-public class HTTPTask extends AsyncTask<HttpUriRequest, Void, Object> {
+public abstract class HTTPTask extends AsyncTask<HttpUriRequest, Void, Object> {
     private static final String TAG = "RestTask";
 
     private String taskName = "";
     private String cookie = "";
     private int responseStatusCode = 0;
     private AbstractHttpClient mClient;
-    private WeakReference<ResponseCallback> mCallback;
-
-    public interface ResponseCallback {
-        void onRequestSuccess(String response);
-        void onRequestError(Exception error);
-    }
+    HttpResponse serverResponse;
 
     public HTTPTask() {
         this(new DefaultHttpClient());
@@ -54,33 +49,13 @@ public class HTTPTask extends AsyncTask<HttpUriRequest, Void, Object> {
     public String getCookie(){ return cookie;}
     public int getResponseStatusCode() { return responseStatusCode; }
 
-
-    public void setResponseCallback(ResponseCallback callback) {
-        mCallback = new WeakReference<>(callback);
-    }
-
     @Override
     protected Object doInBackground(HttpUriRequest... params)
     {
         try {
-            HttpUriRequest request = params[0];
-            HttpResponse serverResponse = mClient.execute(request);
-            BasicResponseHandler handler = new BasicResponseHandler();
-
+            HttpResponse serverResponse = mClient.execute(params[0]);
             responseStatusCode = serverResponse.getStatusLine().getStatusCode();
-
-            if ( responseStatusCode == 200 ) {
-                Log.e(TAG, "doInBackground: code 200 OK");
-            }else{
-                Log.e(TAG, "doInBackground: HTTP response code: " + responseStatusCode);
-                Log.e(TAG, "doInBackground: HTTP response: " + serverResponse);
-            }
-
             String response = "";
-            if ( taskName.equals("")) {
-                response = handler.handleResponse(serverResponse);
-            }
-
             return response;
         }
         catch (Exception e) {
@@ -89,20 +64,14 @@ public class HTTPTask extends AsyncTask<HttpUriRequest, Void, Object> {
         }
     }
 
+    abstract public void actionOnPostExecute();
+
     @Override
     protected void onPostExecute(Object result) {
-        if ( mCallback != null && mCallback.get() != null ) {
-            final ResponseCallback callback = mCallback.get();
-            if (result instanceof String) {
-                callback.onRequestSuccess((String) result);
-            }
-            else if (result instanceof Exception) {
-                callback.onRequestError((Exception) result);
-            }
-            else {
-                callback.onRequestError(new IOException(
-                        "Unknown Error Contacting Host") );
-            }
+        if (getResponseStatusCode() == 200){
+            actionOnPostExecute();
+        }else {
+            Log.e("HTTP request error", serverResponse.toString());
         }
     }
 }
