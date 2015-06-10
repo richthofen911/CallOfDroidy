@@ -1,4 +1,4 @@
-package project.richthofen911.callofdroidy.beacon;
+package project.richthofen911.callofdroidy;
 
 import android.app.Activity;
 import android.os.RemoteException;
@@ -21,33 +21,30 @@ import java.util.Collection;
 
 public class ActivityBeaconDetectionByRECO extends Activity implements RECOServiceConnectListener, RECORangingListener{
 
-    protected final boolean DISCONTINUOUS_SCAN = false;
+    private final boolean DISCONTINUOUS_SCAN = false;
 
-    protected boolean entered = false;
-    protected int exitCount = 0;
-    protected boolean exited = false;
-    protected int rssiBorder = 0;
-    protected boolean startImmediately = false;
+    private boolean entered = false;
+    private int exitCount = 0;
+    private boolean exited = false;
+    private int rssiBorder = 0;
+    private int currentMinor = 0;
 
     protected RECOBeaconManager mRecoManager = RECOBeaconManager.getInstance(this, false, false);
     protected ArrayList<RECOBeaconRegion> definedRegions;
 
-    protected void assignRegionArgs(String uuid, int borderValue, boolean start){
+    protected void assignRegionArgs(String uuid, int borderValue){
         definedRegions = generateBeaconRegion(uuid);
         rssiBorder = borderValue;
-        startImmediately = start;
     }
 
-    protected void assignRegionArgs(String uuid, int major, int borderValue, boolean start){
+    protected void assignRegionArgs(String uuid, int major, int borderValue){
         definedRegions = generateBeaconRegion(uuid, major);
         rssiBorder = borderValue;
-        startImmediately = start;
     }
 
-    protected void assignRegionArgs(String uuid, int major, int minor, int borderValue, boolean start){
+    protected void assignRegionArgs(String uuid, int major, int minor, int borderValue){
         definedRegions = generateBeaconRegion(uuid, major, minor);
         rssiBorder = borderValue;
-        startImmediately = start;
     }
 
     @Override
@@ -89,7 +86,7 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
         }
     }
 
-    protected ArrayList<RECOBeaconRegion> generateBeaconRegion(String uuid) {
+    private ArrayList<RECOBeaconRegion> generateBeaconRegion(String uuid) {
         ArrayList<RECOBeaconRegion> regions = new ArrayList<>();
         RECOBeaconRegion recoRegion;
         recoRegion = new RECOBeaconRegion(uuid, "Defined Region");
@@ -97,7 +94,7 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
         return regions;
     }
 
-    protected ArrayList<RECOBeaconRegion> generateBeaconRegion(String uuid, int major) {
+    private ArrayList<RECOBeaconRegion> generateBeaconRegion(String uuid, int major) {
         ArrayList<RECOBeaconRegion> regions = new ArrayList<>();
         RECOBeaconRegion recoRegion;
         recoRegion = new RECOBeaconRegion(uuid, major, "Defined Region");
@@ -105,7 +102,7 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
         return regions;
     }
 
-    protected ArrayList<RECOBeaconRegion> generateBeaconRegion(String uuid, int major, int minor) {
+    private ArrayList<RECOBeaconRegion> generateBeaconRegion(String uuid, int major, int minor) {
         ArrayList<RECOBeaconRegion> regions = new ArrayList<>();
         RECOBeaconRegion recoRegion;
         recoRegion = new RECOBeaconRegion(uuid, major, minor, "Defined Region");
@@ -117,8 +114,7 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
     public void onServiceConnect() {
         Log.e("RangingActivity", "onServiceConnect()");
         mRecoManager.setDiscontinuousScan(DISCONTINUOUS_SCAN);
-        if(startImmediately)
-            start(definedRegions);
+        start(definedRegions);
     }
 
     @Override
@@ -130,27 +126,34 @@ public class ActivityBeaconDetectionByRECO extends Activity implements RECOServi
 
     protected void actionOnExit(RECOBeacon recoBeacon){}
 
-    protected void inOut(int theRssi, RECOBeacon recoBeacon){
+    private void inOut(int theRssi, RECOBeacon recoBeacon){
         if(theRssi > rssiBorder){
             if(!entered){
                 exitCount = 0;
                 entered = true;
                 exited = false;
+                Log.e("put a checkin", " with beacon " + recoBeacon.getMinor());
+                currentMinor = recoBeacon.getMinor();
                 actionOnEnter(recoBeacon);
             }else{
                 Log.e("entered already", ")");
             }
         }else{
-            if(exitCount < 3){
-                exitCount++;
-            }else {
-                if(!exited){
-                    entered = false;
-                    exited = true;
-                    actionOnExit(recoBeacon);
+            if(recoBeacon.getMinor() == currentMinor){
+                if(exitCount < 3){
+                    exitCount++;
                 }else {
-                    Log.e("exited already", ")");
+                    if(!exited){
+                        entered = false;
+                        exited = true;
+                        currentMinor = 0;
+                        actionOnExit(recoBeacon);
+                    }else {
+                        Log.e("exited already", ")");
+                    }
                 }
+            }else{
+                Log.e("not this beacon", String.valueOf(recoBeacon.getMinor()));
             }
         }
     }
