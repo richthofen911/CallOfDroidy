@@ -1,0 +1,94 @@
+package net.callofdroidy.volleyexp;
+
+import android.os.AsyncTask;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.util.Log;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+
+import java.net.Socket;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class ActivityMain extends AppCompatActivity {
+
+    private static final String SET_COOKIE_KEY = "Set-Cookie";
+    private static final String COOKIE_KEY = "Cookie";
+    private static final String SESSION_COOKIE = "sessionid";
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        doNextSocketHTTPRequest("GET", "104.236.52.185", 80, "/sso_client/", null, null, true);
+    }
+
+    public void doNextSocketHTTPRequest(String method, String urlHost, int port, String path, String headerExtraData, String bodyData, boolean stop){
+        new SendSocketHTTPRequest().execute(method, urlHost, String.valueOf(port), path, headerExtraData, bodyData, String.valueOf(stop));
+    }
+
+    class SendSocketHTTPRequest extends AsyncTask<String, String, String>{
+        @Override
+        protected String doInBackground(String...params){
+            Socket socket = null;
+            PrintWriter writer = null;
+            BufferedReader reader = null;
+            StringBuilder respLine = new StringBuilder("");
+            try{
+                socket = new Socket(params[1], Integer.valueOf(params[2]));
+                writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+                writer.println(params[0] + " " + params[3] + " HTTP/1.1");
+                writer.println("Host: " + params[1]);
+                writer.println("Accept: */*");
+                writer.println("User-Agent: Java");
+                if(params[4] != null)
+                    writer.println(params[4]);
+                writer.println(""); // Important, else the server will expect that there's more into the request.
+                if(params[5] != null)
+                    writer.println(params[5]);
+                writer.flush();
+                reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF8"));
+                for (String line; (line = reader.readLine()) != null;) {
+                    if (line.isEmpty())
+                        break; // Stop when headers are completed. We're not interested in all the HTML.
+                    respLine.append(line);
+                }
+            }catch (IOException e){
+                e.printStackTrace();
+            }finally {
+                if (reader != null) try { reader.close(); } catch (IOException logOrIgnore) {}
+                if (writer != null) { writer.close(); }
+                if (socket != null) try { socket.close(); } catch (IOException logOrIgnore) {}
+                if(params[6].equals("true"))
+                    respLine.insert(0, "stop");
+                return respLine.toString();
+            }
+        }
+        protected void onPostExecute(String result) {
+            Log.e("raw result", result);
+            Pattern pattern1 = Pattern.compile("Location:\\s.+lang=");
+            Pattern pattern2 = Pattern.compile("sso_oppai_rid=[A-Za-z0-9]+;");
+            Matcher matcher = pattern1.matcher(result);
+            Matcher matcher2 = pattern2.matcher(result);
+            if(matcher.find())
+                Log.e("match 1:", matcher.group());
+            if(matcher2.find())
+                Log.e("match 2:", matcher2.group(0));
+            /*
+            if(!result.startsWith("stop"))
+                ActivityMain.this.doNextSocketHTTPRequest("1", "2", 3, "4", "5", "6", false);
+            else
+                ActivityMain.this.doNextSocketHTTPRequest("1", "2", 3, "4", "5", "6", true);
+            */
+        }
+
+    }
+
+
+}
