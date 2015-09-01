@@ -70,7 +70,7 @@ public class ActivityMain extends AppCompatActivity {
             writer.flush();
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF8"));
             for (String line; (line = reader.readLine()) != null;) {
-                if (line.isEmpty())
+                if (line.isEmpty())  //comment out this line and next line to get HTML body data
                     break; // Stop when headers are completed. We're not interested in all the HTML.
                 respLine.append(line);
             }
