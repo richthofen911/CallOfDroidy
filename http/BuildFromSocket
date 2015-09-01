@@ -2,7 +2,6 @@ import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -121,8 +120,17 @@ public class ActivityMain extends AppCompatActivity {
                     Log.e("sso_server_ern:", sso_server_ern);
                     break;
                 case "login":
-                    username = matcher.group(1);
-                    password = matcher.group(2);
+                    count++;
+                    switch (count){
+                        case 2:
+                            username = matcher.group();
+                            Log.e("username:", username);
+                            break;
+                        case 3:
+                            password = matcher.group();
+                            Log.e("password", password);
+                            break;
+                    }
                     signin = "Sign in";
             }
         }
